@@ -1,69 +1,114 @@
-# app/scans.py
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, HttpUrl
-from uuid import uuid4
 from time import sleep
-from typing import Literal, Dict
+from typing import List, Literal, Optional
+from sqlalchemy.orm import Session
+from . import models
+from .database import SessionLocal, get_db
 from .deps import get_current_user
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
-# in-memory storage (demo)
-SCANS: Dict[str, Dict] = {}  # scan_id -> {status, target, findings}
-
 class StartScanIn(BaseModel):
     target_url: HttpUrl
 
-class StartScanOut(BaseModel):
-    scan_id: str
-    status: Literal["queued", "running", "done", "failed"] = "queued"
+class FindingOut(BaseModel):
+    id: int
+    tool: str
+    name: str
+    risk: str
+    url: str
+    param: Optional[str] = None
+    evidence: str
 
-def _run_scan(scan_id: str, target_url: str):
-    # simulate work
-    SCANS[scan_id]["status"] = "running"
-    sleep(4)  # pretend scan time
-    # demo findings
-    findings = [
-        {
-            "tool": "zap",
-            "name": "X-Content-Type-Options Header Missing",
-            "risk": "Low",
-            "url": str(target_url),
-            "param": None,
-            "evidence": "Header not set",
-        },
-        {
-            "tool": "zap",
-            "name": "Cookie Without Secure Flag",
-            "risk": "Medium",
-            "url": f"{target_url.rstrip('/')}/login",
-            "param": "sessionid",
-            "evidence": "Set-Cookie: sessionid=...; HttpOnly",
-        },
-    ]
-    SCANS[scan_id]["findings"] = findings
-    SCANS[scan_id]["status"] = "done"
+    class Config:
+        orm_mode = True
+
+class StartScanOut(BaseModel):
+    scan_id: int
+    target_url: str
+    status: Literal["queued", "running", "done", "failed"] = "queued"
+    user_id: int
+    findings: List[FindingOut] = []
+
+    class Config:
+        orm_mode = True
+
+def _run_scan(scan_id: int, target_url: str):
+    db = SessionLocal()
+    try:
+        scan = db.query(models.Scan).filter(models.Scan.id == scan_id).first()
+        if not scan:
+            return
+
+        # Update status to running
+        scan.status = "running"
+        db.commit()
+
+        sleep(4)  # simulate scan time
+        # demo findings
+        findings = [
+            {
+                "tool": "zap",
+                "name": "X-Content-Type-Options Header Missing",
+                "risk": "Low",
+                "url": str(target_url),
+                "param": None,
+                "evidence": "Header not set",
+            },
+            {
+                "tool": "zap",
+                "name": "Cookie Without Secure Flag",
+                "risk": "Medium",
+                "url": f"{target_url.rstrip('/')}/login",
+                "param": "sessionid",
+                "evidence": "Set-Cookie: sessionid=...; HttpOnly",
+            },
+        ]
+        for finding in findings:
+            db_finding = models.Finding(**finding, scan_id=scan.id)
+            db.add(db_finding)
+        scan.status = "done"
+        db.commit()
+    finally:
+        db.close()
 
 @router.post("", response_model=StartScanOut)
-def start_scan(body: StartScanIn, bg: BackgroundTasks, user=Depends(get_current_user)):
-    # RBAC: viewers cannot start scans
-    if user["role"] == "viewer":
+def start_scan(body: StartScanIn, bg: BackgroundTasks, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    if user.role == "viewer":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to start scans")
-    scan_id = str(uuid4())
-    SCANS[scan_id] = {"status": "queued", "target": str(body.target_url), "findings": []}
-    bg.add_task(_run_scan, scan_id, str(body.target_url))
-    return {"scan_id": scan_id, "status": "queued"}
+
+    new_scan = models.Scan(
+        target_url=str(body.target_url),
+        status="queued",
+        user_id=user.id
+    )
+    db.add(new_scan)
+    db.commit()
+    db.refresh(new_scan)
+
+    bg.add_task(_run_scan, new_scan.id, str(body.target_url))
+
+    return {
+        "scan_id": new_scan.id,
+        "target_url": new_scan.target_url,
+        "status": new_scan.status,
+        "user_id": new_scan.user_id,
+        "findings": []
+    }
 
 @router.get("/{scan_id}/status")
-def scan_status(scan_id: str, user=Depends(get_current_user)):
-    rec = SCANS.get(scan_id)
-    if not rec: raise HTTPException(status_code=404, detail="Not found")
-    return {"scan_id": scan_id, "status": rec["status"]}
+def scan_status(scan_id: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    scan = db.query(models.Scan).filter(models.Scan.id == scan_id).first()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Not found")
+    return {"scan_id": scan_id, "status": scan.status}
 
 @router.get("/{scan_id}/report")
-def scan_report(scan_id: str, user=Depends(get_current_user)):
-    rec = SCANS.get(scan_id)
-    if not rec: raise HTTPException(status_code=404, detail="Not found")
-    if rec["status"] != "done":
-        raise HTTPException(status_code=409, detail="Report not ready")
-    return {"scan_id": scan_id, "target": rec["target"], "findings": rec["findings"]}
+def scan_report(scan_id: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    scan = db.query(models.Scan).filter(models.Scan.id == scan_id).first()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    if scan.user_id != user.id and user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Not authorized to view this report")
+    return scan

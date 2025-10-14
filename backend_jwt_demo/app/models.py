@@ -10,6 +10,8 @@ class User(Base):
     password = Column(String, nullable=False)
     role = Column(String, default="user")
 
+    scans = relationship("Scan", back_populates="user")
+
 class Scan(Base):
     __tablename__ = "scans"
     id = Column(Integer, primary_key=True, index=True)
@@ -17,6 +19,8 @@ class Scan(Base):
     status = Column(String, default="queued")
     created_at = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"))
+
+    user = relationship("User", back_populates="scans")
     findings = relationship("Finding", back_populates="scan")
 
 class Finding(Base):
@@ -29,4 +33,5 @@ class Finding(Base):
     param = Column(String)
     evidence = Column(Text)
     scan_id = Column(Integer, ForeignKey("scans.id"))
+
     scan = relationship("Scan", back_populates="findings")

@@ -2,3 +2,8 @@ fastapi
 uvicorn
 PyJWT
 python-multipart
+sqlalchemy
+psycopg2
+passlib
+python-jose
+bcrypt==4.0.1

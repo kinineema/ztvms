@@ -4,6 +4,36 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 import jwt
+from passlib.context import CryptContext
+from jose import jwt
+from sqlalchemy.orm import Session
+from .models import User
+from .database import get_db
+
+# JWT settings
+SECRET_KEY = "your-secret-key"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+class UserRegister(BaseModel):
+    username: str
+    password: str
+    role: str
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -45,6 +75,18 @@ def login(form: OAuth2PasswordRequestForm = Depends()):
         "refresh_token": create_refresh(email),
         "role": role,
     }
+
+@router.post("/register")
+def register_user(user: UserRegister, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    hashed_pw = pwd_context.hash(user.password)
+    new_user = User(username=user.username, password=hashed_pw, role=user.role)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"username": new_user.username, "role": new_user.role}
 
 class RefreshIn(BaseModel):
     refresh_token: str
