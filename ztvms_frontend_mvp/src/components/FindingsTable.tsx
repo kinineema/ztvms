@@ -40,10 +40,29 @@ export default function FindingsTable({ findings }: { findings: Finding[] }) {
             <TableRow key={i}>
               <TableCell>{f.tool || "-"}</TableCell>
               <TableCell>{f.name || "-"}</TableCell>
-              <TableCell><Chip label={f.risk || "-"} color={riskColor(f.risk) as any} size="small" /></TableCell>
-              <TableCell>{f.url ? <Link href={f.url} target="_blank" rel="noreferrer">{f.url}</Link> : "-"}</TableCell>
+              <TableCell>
+                <Chip label={f.risk || "-"} color={riskColor(f.risk) as any} size="small" />
+              </TableCell>
+              <TableCell>
+                {f.url ? (
+                  <Link
+                    href={f.url.startsWith("http") ? f.url : `https://${f.url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    underline="always"
+                    onClick={(e) => e.stopPropagation()}
+                    sx={{ wordBreak: "break-all", cursor: "pointer" }}
+                  >
+                    {f.url}
+                  </Link>
+                ) : (
+                  "-"
+                )}
+              </TableCell>
               <TableCell>{f.param || "-"}</TableCell>
-              <TableCell sx={{ maxWidth: 320, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <TableCell
+                sx={{ maxWidth: 320, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+              >
                 {f.evidence || "-"}
               </TableCell>
             </TableRow>
