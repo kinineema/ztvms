@@ -1,8 +1,18 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 from .auth import router as auth_router
 from .deps import get_current_user
-from .scans import router as scans_router   
+from .scans import router as scans_router
+from .database import SessionLocal
+from . import models
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 app = FastAPI(title="SecScan API (Auth)")
 
