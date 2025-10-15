@@ -56,3 +56,16 @@ npm run dev
 
 BACKEND WINDOW
 uvicorn app.main:app --reload
+
+GIT COMMIT
+  git init
+  git add .
+  git commit -m "Initial complete MVP: frontend + backend + dark theme + MTM"
+  git branch -M main
+  git push -u origin main
+
+//While making changes:
+  git add .
+  git commit -m "Added database integration and improved login"
+  git push
+
