@@ -37,7 +37,7 @@ export default function FindingsTable({ findings }: { findings: Finding[] }) {
         </TableHead>
         <TableBody>
           {findings.map((f, i) => (
-            <TableRow key={i}>
+            <TableRow key={i} hover sx={{ "&:hover": { backgroundColor: "rgba(255,255,255,0.04)" } }}>
               <TableCell>{f.tool || "-"}</TableCell>
               <TableCell>{f.name || "-"}</TableCell>
               <TableCell>

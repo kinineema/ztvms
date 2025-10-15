@@ -1,11 +1,4 @@
-# ZTVMS Frontend MVP (React + Vite + TS + MUI)
-
-This is the minimal frontend to satisfy the MVP checklist:
-- Target URL input
-- Start scan (POST /scans)
-- Show scan ID and status (GET /scans/{id}/status) with polling
-- View Findings (GET /scans/{id}/report) raw JSON
-
+# ZTVMS Frontend (React + Vite + TS + MUI)
 ## Prereqs
 - Node 18+
 - Backend running at http://localhost:8000 with routes:
@@ -40,7 +33,8 @@ FastAPI verifies token via get_current_user()
 PROJECT Progress Notes:
 
 Backend Integration --> Pending
-Frontend --> For now we use MOCK env
+Frontend --> For now we use MOCK env //MOCK removed and integrated with backend
+API --> To check API: http://127.0.0.1:8000/docs#/
   Later remove and connect to proxy
   Authentication/Login part uses JWT Token system for easy integration and easier for API calls --> Currently uses MOCK env, later switched to JWT once backend integrated
 
