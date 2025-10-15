@@ -9,7 +9,7 @@ backend/__pycache__/
 *.pyc
 
 # Environment files
-**/.env
+ztvms_frontend_mvp/.env.example
 **/.env.local
 
 # OS / Editor
