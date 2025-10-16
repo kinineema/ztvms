@@ -1,5 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, Field, ConfigDict
 from time import sleep
 from typing import List, Literal, Optional
 from sqlalchemy.orm import Session
@@ -21,18 +21,16 @@ class FindingOut(BaseModel):
     param: Optional[str] = None
     evidence: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class StartScanOut(BaseModel):
-    scan_id: int
+    scan_id: int = Field(..., alias='id')
     target_url: str
     status: Literal["queued", "running", "done", "failed"] = "queued"
     user_id: int
     findings: List[FindingOut] = []
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 def _run_scan(scan_id: int, target_url: str):
     db = SessionLocal()
@@ -89,13 +87,7 @@ def start_scan(body: StartScanIn, bg: BackgroundTasks, user=Depends(get_current_
 
     bg.add_task(_run_scan, new_scan.id, str(body.target_url))
 
-    return {
-        "scan_id": new_scan.id,
-        "target_url": new_scan.target_url,
-        "status": new_scan.status,
-        "user_id": new_scan.user_id,
-        "findings": []
-    }
+    return new_scan
 
 @router.get("/{scan_id}/status")
 def scan_status(scan_id: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -104,7 +96,7 @@ def scan_status(scan_id: int, user: models.User = Depends(get_current_user), db:
         raise HTTPException(status_code=404, detail="Not found")
     return {"scan_id": scan_id, "status": scan.status}
 
-@router.get("/{scan_id}/report")
+@router.get("/{scan_id}/report", response_model=StartScanOut)
 def scan_report(scan_id: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     scan = db.query(models.Scan).filter(models.Scan.id == scan_id).first()
     if not scan:

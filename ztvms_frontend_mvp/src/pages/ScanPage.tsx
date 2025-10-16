@@ -4,7 +4,6 @@ import { startScan, getScanStatus, getScanReport } from '../api/scans'
 import { useInterval } from '../hooks/useInterval'
 import FindingsTable from "../components/FindingsTable";
 
-// place this directly under your imports
 const StatusChip: React.FC<{ status: string }> = ({ status }) => {
   const s = status?.toLowerCase();
   const styles: Record<string, React.CSSProperties> = {
@@ -20,7 +19,6 @@ const StatusChip: React.FC<{ status: string }> = ({ status }) => {
     </span>
   );
 };
-
 
 export default function ScanPage(){
   const [url, setUrl] = useState('')
