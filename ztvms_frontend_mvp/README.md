@@ -69,3 +69,87 @@ GIT COMMIT
   git commit -m "Added database integration and improved login"
   git push
 
+
+
+
+Component
+
+🧑 User Access
+
+User → React Frontend
+
+No user is trusted by default. Every login attempt must be authenticated using valid credentials.
+
+JWT Authentication via FastAPI
+
+💻 Frontend Layer
+
+React + Vite + MUI
+
+No direct data access; communicates only via API calls over HTTPS. Stores tokens securely in browser.
+
+Axios interceptor with JWT; localStorage or secure cookies
+
+🌐 API Gateway
+
+FastAPI
+
+Each request is verified using the JWT. Role-based access (Admin/Analyst/Viewer) controls what each user can do.
+
+FastAPI + PyJWT middleware + Pydantic validation
+
+⚙️ Backend Core
+
+FastAPI Services (Auth, Scans, Reports)
+
+Acts as central gatekeeper; enforces Zero-Trust for all incoming traffic, sanitizes input, and logs all actions.
+
+FastAPI, SQLAlchemy ORM
+
+🧰 Vulnerability Scanning Service
+
+OWASP ZAP (Dynamic Analysis)
+
+Scans user-provided target URLs for live vulnerabilities (SQL injection, XSS, CSRF, etc.).
+
+OWASP ZAP API
+
+💾 Database Layer
+
+PostgreSQL
+
+Stores users, scans, findings. Access restricted to FastAPI only. No direct external queries allowed.
+
+PostgreSQL with strict role-based privileges
+
+🧠 Threat Modeling
+
+Microsoft Threat Modeling Tool
+
+Models system architecture and threats based on CIA/STRIDE; guides what to test and protect.
+
+Microsoft TMT
+
+🧑‍💻 Code Security (SAST)
+
+Bandit
+
+Analyzes Python backend code for unsafe functions, weak cryptography, and security misconfigurations.
+
+Bandit
+
+🧩 Dependency Security (SCA)
+
+Safety / npm audit
+
+Checks backend (Python) and frontend (React) dependencies for known CVEs.
+
+Safety, npm audit
+
+🔄 CI/CD or Dev Pipeline
+
+Git + GitHub Actions
+
+Runs Bandit and Safety automatically before deployment to prevent insecure code merges.
+
+GitHub Actions, Bandit, Safety
